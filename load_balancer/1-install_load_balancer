@@ -17,14 +17,12 @@ global
 	user haproxy
 	group haproxy
 	daemon
-	h1-case-adjust x-served-by X-Served-By
 
 defaults
 	log	global
 	mode	http
 	option	httplog
 	option	dontlognull
-	option	h1-case-adjust-bogus-client
 	timeout connect 5000
 	timeout client  50000
 	timeout server  50000
@@ -39,4 +37,10 @@ backend http_back
 	server 7154-web-02 52.23.236.50:80 check
 EOF
 
-service haproxy restart
+# Header case preservation only exists in HAProxy 1.9+
+if haproxy -v | grep -qE "version (1\.9|2\.|3\.)"; then
+	sed -i '/daemon/a\\th1-case-adjust x-served-by X-Served-By' /etc/haproxy/haproxy.cfg
+	sed -i '/option\tdontlognull/a\\toption\th1-case-adjust-bogus-client' /etc/haproxy/haproxy.cfg
+fi
+
+service haproxy restart || service haproxy start
